@@ -1,29 +1,42 @@
+#
+# Simulation of recombination landscape
+# Susan E. Johnston
+# Started: 5th November 2015
+#
+#
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# 0. Set up working environment                                #
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
 
 library(ggplot2)
 library(plyr)
 
+map <- read.table("data/soay_map.txt", header = T)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# 1. Define simulation parameters and sampling distributions   #
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
 #~~ Create the sampling distrubutions
 
-map <- read.table("data/soay_map.txt", sep = ",", header = T)
-
-map.dist <- diff(map$cM.Position.Sex.Averaged)
+map.dist <- diff(map$cM.Position.Sex.Averaged[seq(1, nrow(map), 10)])
 map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
 
-maf.info <- maf$MAF
-
-rm(maf, map)
+maf.info <- map$MAF
 
 #~~ define starting values
 
-n.found.hap <- 100
-n.loci <- 1000
-n.f <- 1000
-n.m <- 1000
-f.RS <- 2
-f.RS.Pr <- 1
-sel.thresh <- 0.2
+n.found.hap <- 100    # Number of founder haplotypes generated
+n.loci      <- 100   # Number of loci underlying the trait
+n.f         <- 1000   # Number of females
+n.m         <- 1000   # Number of males
+f.RS        <- 2      # Number of offspring per female
+f.RS.Pr     <- 1      # Probability of number of offspring per female.
+sel.thresh  <- 0.2    # Selection threshold
 
-#~~ sample a landscape and initial frequencies of alleles in founders
+#~~ sample two landscapes and initial frequencies of alleles in founders
 
 r1 <- sample(map.dist/100, n.loci)
 r2 <- sample(map.dist/100, n.loci)
@@ -35,22 +48,33 @@ ggplot(data.frame(r = c(r1, r2), map = rep(1:2, each = length(r1)), x = rep(1:le
   geom_line() +
   scale_colour_brewer(palette = "Set1")
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# 3. Generate information in founder generation                #
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
 #~~ generate founder haplotypes
 
 founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < mafs.found) + 0L)
-
-### FOUNDER GENERATION
 
 #~~ generate diplotypes for n.f females and n.m males
 
 gen.0.f <- sample(founder.haplos, size = 2 * n.f, replace = T)
 gen.0.m <- sample(founder.haplos, size = 2 * n.m, replace = T)
 
+#~~ generate two offspring per female
+
+
+
+
+
+
+
+
 #~~ selection from males - create a reference frame
 
 m.0.info <- data.frame(ID = 1:n.m,
                        Pheno = unlist(lapply(gen.0.m[seq(1, 2 * n.m, 2)], sum)) +
-                         unlist(lapply(gen.0.m[seq(2, 2 * n.m, 2)], sum)))
+                               unlist(lapply(gen.0.m[seq(2, 2 * n.m, 2)], sum)))
 
 m.0.info <- m.0.info[sample(1:nrow(m.0.info), replace = F, size = nrow(m.0.info)),]
 m.0.info <- arrange(m.0.info, Pheno)
