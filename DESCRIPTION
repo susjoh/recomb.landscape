@@ -1,0 +1,9 @@
+Package: recomb.landscape 
+Title: Simulate phenotypes under selection with variation in recombination phenotype.
+Version: 0.0.0.9000
+Authors@R: person("Susan", "Johnston", "Susan.Johnston@ed.ac.uk", role = c("aut", "cre"))
+Description: Does what it says on the tin.
+Depends: R (>= 3.1.2)
+License: MIT
+LazyData: true
+Imports: plyr, data.table
