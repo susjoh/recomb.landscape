@@ -1,3 +1,3 @@
-# recomb_landscape
+# recomb.landscape
 
 Simulation of recombination landscape variation
