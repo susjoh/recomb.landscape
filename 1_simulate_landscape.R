@@ -38,7 +38,7 @@ f.RS.Pr         <- 1      # Probability of number of offspring per female.
 sel.thresh.f    <- 1      # Selection threshold
 sel.thresh.m    <- 0.2    # Selection threshold
 prdm9.found.maf <- 0.1    # Starting freq of PRDM9
-
+iterations      <- 5
 
 #~~ sample two landscapes and initial frequencies of alleles in founders
 
@@ -51,20 +51,26 @@ ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = re
   geom_line() +
   scale_colour_brewer(palette = "Set1")
 
+map.list <- list(r1, rhet, r2)
+
 #~~ fix MAFs so that they show a range of frequencies between 0 & 1
 
 mafs.found <- sample(maf.info, n.loci)
 mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2
-  
+
 #~~ determine PRDM9 genotype frequencies based on HWE
-  
+
 p <- prdm9.found.maf
 q <- 1 - p
 prdm9.found.prs <- c(p^2, 2*p*q, q^2)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-# 3. Generate information in founder generation                #
+# 3. Create Simulation                                         #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+results.list <- list()
+haplo.list <- list()
+
 
 # NB Sex 1 = male, 2 = female (Xy, XX)
 
@@ -84,94 +90,161 @@ for(i in 1:(n.f + n.m)){
 
 #~~ create reference table
 
-ref.0 <- data.frame(List.Key    = 1:length(gen.0),
-                    GEN         = 0,
-                    ID          = 1:(n.f + n.m),
+ref.0 <- data.frame(GEN         = 0,
+                    ID          = 1:length(gen.0),
                     MOTHER      = NA,
                     FATHER      = NA,
                     SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
                     PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
                     PHENO       = sapply(1:length(gen.0), function(x) sum(unlist(gen.0[[x]]))))
 
+m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)]
+f.thresh <- sort(subset(ref.0, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.0, SEX == 2)$PHENO)]
+if(length(m.thresh) == 0) m.thresh <- 0
+if(length(f.thresh) == 0) f.thresh <- 0
+
+#~~ remove IDs that will not be selected
+
+ref.0$Bred <- 0
+ref.0$Bred[sort(c(which(ref.0$SEX == 1 & ref.0$PHENO >= m.thresh),
+                  which(ref.0$SEX == 2 & ref.0$PHENO >= f.thresh)))] <- 1
 
 
-#~~ create phenotype table for selection
-
-ref.0.pheno <- data.frame(ID.Pheno = tapply(ref.0$Haplo.Pheno, ref.0$ID, sum))
-ref.0.pheno$ID <- row.names(ref.0.pheno)
-ref.0.pheno <- join(ref.0.pheno, unique(ref.0[,c("ID", "SEX")]))
-
-ref.0.pheno.m <- subset(ref.0.pheno, SEX == 1)                    
-ref.0.pheno.m <- ref.0.pheno.m[sample(1:nrow(ref.0.pheno.m), replace = F, size = nrow(ref.0.pheno.m)),]
-ref.0.pheno.m <- arrange(ref.0.pheno.m, ID.Pheno)
-ref.0.pheno.m <- ref.0.pheno.m[((1-sel.thresh.m)*nrow(ref.0.pheno.m) + 1):nrow(ref.0.pheno.m),]
-
-ref.0.pheno.f <- subset(ref.0.pheno, SEX == 2)                    
-ref.0.pheno.f <- ref.0.pheno.f[sample(1:nrow(ref.0.pheno.f), replace = F, size = nrow(ref.0.pheno.f)),]
-ref.0.pheno.f <- arrange(ref.0.pheno.f, ID.Pheno)
-ref.0.pheno.f <- ref.0.pheno.f[((1-sel.thresh.f)*nrow(ref.0.pheno.f) + 1):nrow(ref.0.pheno.f),]
-
-ref.0 <- subset(ref.0, ID %in% c(ref.0.pheno.m$ID, ref.0.pheno.f$ID))
+results.list[[1]] <- ref.0
+haplo.list[[1]] <- gen.0
 
 #~~ generate spaces for diplotypes of two offspring per female and sample best fathers
 
-length.out <- f.RS*nrow(subset(ref.0, SEX == 2))
-
-ref.1 <- data.frame(List.Key    = 1:length.out,
-                    ID          = rep(1:(length.out/2), each = 2),
-                    MOTHER      = rep(subset(ref.0, SEX == 2)$ID, each = f.RS),
-                    FATHER      = rep(sample(subset(ref.0, SEX == 1)$ID,
-                                             size = length.out/2,
-                                             replace = T),
-                                      each = 2),
-                    SEX         = rep((runif(1) < 0.5) + 1L,
-                                      each = 2,
-                                      length.out = length.out),
-                    Haplo       = rep(1:2, length.out = length.out),
-                    Haplo.Pheno = NA)
-
-#~~ sample fathers
-
-
-
-
-
-rec.pos <- which(((runif(length(r1)) < r1) + 0L) == 1)
-
-#~~ If there are no recombination events, sample one of the parental haplotypes at random
-
-if(length(rec.pos) == 0){
-  haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 1)]
-}
-
-#~~ If there are recombination events, sample the order of the parental haplotypes,
-#   exchange haplotypes and then transmit haplotype to offspring
-
-if(length(rec.pos) > 0){
+for(it in 1:iterations){
   
-  parental.haplotypes <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 2, replace = F)]
+  print(paste("Generation", it))
+
+  length.out <- f.RS*nrow(subset(ref.0, SEX == 2 & Bred == 1))
   
-  start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
-  stop.pos <- c(rec.pos, length(r.female) + 1)
+  ref.1 <- data.frame(GEN         = it,
+                      ID          = 1:length.out,
+                      MOTHER      = rep(subset(ref.0, SEX == 2 & Bred == 1)$ID, each = f.RS),
+                      FATHER      = sample(subset(ref.0, SEX == 1 & Bred == 1)$ID, size = length.out, replace = T),
+                      SEX         = sapply(1:length.out, function(x) (runif(1) < 0.5) + 1L),
+                      PRDM9       = NA,
+                      PHENO       = NA)
   
-  fragments <- list()
+  #~~ Transmit a gamete from parents to offspring
   
-  for(k in 1:length(start.pos)){
-    if(k %% 2 != 0) fragments[[k]] <- parental.haplotypes[1][[1]][start.pos[k]:stop.pos[k]]
-    if(k %% 2 == 0) fragments[[k]] <- parental.haplotypes[2][[1]][start.pos[k]:stop.pos[k]]
+  gen.1 <- list()
+  gen.1[1:length.out] <- list(list(MOTHER = NA, FATHER = NA))
+  
+  
+  for(i in 1:length.out){
+    
+    print(paste(i, "MOTHER"))
+    
+    #~~ MOTHER ~~#
+    
+    haplos <- gen.0   [[ref.1$MOTHER[i]]]
+    rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]]
+    
+    #~~ sample crossover positions
+    
+    rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
+    if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
+    if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[[sample.int(2, 1)]]
+    
+    
+    if(length(rec.pos) > 0){
+      
+      haplos <- haplos[sample.int(2, 2, replace = F)]
+      
+      start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
+      stop.pos <- c(rec.pos, length(rmap))
+      
+      fragments <- list()
+      
+      for(k in 1:length(start.pos)){
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
+      }
+      
+      gen.1[[i]][["MOTHER"]] <- unlist(fragments)
+      
+    }
+    
+    #~~ FATHER ~~#
+    
+    haplos <- gen.0   [[ref.1$FATHER[i]]]
+    rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$FATHER[i])]]]
+    
+    print(paste(i, "FATHER"))
+    
+    
+    #~~ sample crossover positions
+    
+    rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
+    if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
+    if(length(rec.pos) == 0) gen.1[[i]]["FATHER"] <- haplos[sample.int(2, 1)][[1]]
+    
+    
+    if(length(rec.pos) > 0){
+      
+      haplos <- haplos[sample.int(2, 2, replace = F)]
+      
+      start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
+      stop.pos <- c(rec.pos, length(rmap))
+      
+      fragments <- list()
+      
+      for(k in 1:length(start.pos)){
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
+      }
+      
+      gen.1[[i]][["FATHER"]] <- unlist(fragments)
+      
+    }
+    
+    #~~ Deal with PRDM9
+    
+    prdm9.mum <- ref.0$PRDM9[which(ref.0$ID == ref.1$MOTHER[i])]
+    prdm9.mum.2 <- ifelse(prdm9.mum == 1, 0,
+                          ifelse(prdm9.mum == 3, 1,
+                                 ifelse(prdm9.mum == 2, (runif(1) < 0.5) + 0L, NA)))
+    
+    prdm9.dad <- ref.0$PRDM9[which(ref.0$ID == ref.1$FATHER[i])]
+    prdm9.dad.2 <- ifelse(prdm9.dad == 1, 0,
+                          ifelse(prdm9.dad == 3, 1,
+                                 ifelse(prdm9.dad == 2, (runif(1) < 0.5) + 0L, NA)))
+    
+    ref.1$PRDM9[i] <- prdm9.mum.2 + prdm9.dad.2 + 1
+    
+    
   }
   
-  haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- list(unlist(fragments))
+  rm(haplos, rmap, rec.pos, start.pos, stop.pos, fragments, k, prdm9.mum, prdm9.mum.2, prdm9.dad, prdm9.dad.2)
+  
+  ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(unlist(gen.1[[x]])))
+  
+  
+  #~~ Deal with IDs that will be selected
+  
+  m.thresh <- sort(subset(ref.1, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.1, SEX == 1)$PHENO)]
+  f.thresh <- sort(subset(ref.1, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.1, SEX == 2)$PHENO)]
+  if(length(m.thresh) == 0) m.thresh <- 0
+  if(length(f.thresh) == 0) f.thresh <- 0
+  
+  #~~ remove IDs that will not be selected
+  
+  ref.1$Bred <- 0
+  ref.1$Bred[sort(c(which(ref.1$SEX == 1 & ref.1$PHENO >= m.thresh),
+                    which(ref.1$SEX == 2 & ref.1$PHENO >= f.thresh)))] <- 1
+  
+  results.list[[(it + 1)]] <- ref.1
+  haplo.list[[(it + 1)]] <- gen.1
+  
+  gen.0 <- gen.1
+  ref.0 <- ref.1
+  
   
 }
-}
-}
-
-
-head(m.0.breedids)
-
-gen.0.m
-
 
 
 
