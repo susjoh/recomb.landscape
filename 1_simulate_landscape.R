@@ -31,14 +31,19 @@ maf.info <- map$MAF
 
 n.found.hap     <- 100    # Number of founder haplotypes generated
 n.loci          <- 100    # Number of loci underlying the trait
-n.f             <- 10   # Number of females
-n.m             <- 10   # Number of males
+n.f             <- 100   # Number of females
+n.m             <- 100   # Number of males
 f.RS            <- 2      # Number of offspring per female
 f.RS.Pr         <- 1      # Probability of number of offspring per female.
 sel.thresh.f    <- 1      # Selection threshold
 sel.thresh.m    <- 0.2    # Selection threshold
-prdm9.found.maf <- 0.1    # Starting freq of PRDM9
-iterations      <- 5
+prdm9.found.maf <- 0.4    # Starting freq of PRDM9
+n.generations   <- 100
+return.haplos   <- TRUE
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# 2. Prepare simulation                                        #
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 #~~ sample two landscapes and initial frequencies of alleles in founders
 
@@ -65,7 +70,7 @@ q <- 1 - p
 prdm9.found.prs <- c(p^2, 2*p*q, q^2)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-# 3. Create Simulation                                         #
+# 3. Run Simulation                                            #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 results.list <- list()
@@ -84,8 +89,8 @@ gen.0 <- list()
 gen.0[1:(n.f + n.m)] <- list(list(MOTHER = NA, FATHER = NA))
 
 for(i in 1:(n.f + n.m)){
-  gen.0[[i]][[1]] <- sample(founder.haplos, size = 1)
-  gen.0[[i]][[2]] <- sample(founder.haplos, size = 1)
+  gen.0[[i]]["MOTHER"] <- sample(founder.haplos, size = 1)
+  gen.0[[i]]["FATHER"] <- sample(founder.haplos, size = 1)
 }
 
 #~~ create reference table
@@ -115,7 +120,7 @@ haplo.list[[1]] <- gen.0
 
 #~~ generate spaces for diplotypes of two offspring per female and sample best fathers
 
-for(it in 1:iterations){
+for(it in 1:n.generations){
   
   print(paste("Generation", it))
 
@@ -134,11 +139,8 @@ for(it in 1:iterations){
   gen.1 <- list()
   gen.1[1:length.out] <- list(list(MOTHER = NA, FATHER = NA))
   
-  
   for(i in 1:length.out){
-    
-    print(paste(i, "MOTHER"))
-    
+        
     #~~ MOTHER ~~#
     
     haplos <- gen.0   [[ref.1$MOTHER[i]]]
@@ -148,7 +150,7 @@ for(it in 1:iterations){
     
     rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
     if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-    if(length(rec.pos) == 0) gen.1[[i]][1] <- haplos[sample.int(2, 1)]
+    if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[sample.int(2, 1)]
     
     
     if(length(rec.pos) > 0){
@@ -161,11 +163,11 @@ for(it in 1:iterations){
       fragments <- list()
       
       for(k in 1:length(start.pos)){
-        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][[1]][start.pos[k]:stop.pos[k]]
-        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
       }
       
-      gen.1[[i]][[1]] <- list(unlist(fragments))
+      gen.1[[i]]["MOTHER"] <- list(unlist(fragments))
       
     }
     
@@ -174,14 +176,11 @@ for(it in 1:iterations){
     haplos <- gen.0   [[ref.1$FATHER[i]]]
     rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$FATHER[i])]]]
     
-    print(paste(i, "FATHER"))
-    
-    
     #~~ sample crossover positions
     
     rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
     if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-    if(length(rec.pos) == 0) gen.1[[i]][[2]] <- haplos[sample.int(2, 1)]
+    if(length(rec.pos) == 0) gen.1[[i]]["FATHER"] <- haplos[sample.int(2, 1)]
     
     
     if(length(rec.pos) > 0){
@@ -194,11 +193,11 @@ for(it in 1:iterations){
       fragments <- list()
       
       for(k in 1:length(start.pos)){
-        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][[1]][start.pos[k]:stop.pos[k]]
-        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
       }
       
-      gen.1[[i]][[2]] <- list(unlist(fragments))
+      gen.1[[i]]["FATHER"] <- list(unlist(fragments))
       
     }
     
@@ -238,7 +237,7 @@ for(it in 1:iterations){
                     which(ref.1$SEX == 2 & ref.1$PHENO >= f.thresh)))] <- 1
   
   results.list[[(it + 1)]] <- ref.1
-  haplo.list[[(it + 1)]] <- gen.1
+  if(return.haplos == TRUE) haplo.list[[(it + 1)]] <- gen.1
   
   gen.0 <- gen.1
   ref.0 <- ref.1
@@ -246,5 +245,20 @@ for(it in 1:iterations){
   
 }
 
-do.call(rbind, results.list)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# 4. Parse output                                              #
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+if(return.haplos == TRUE){
+  list(results = results.list, haplos = haplo.list)
+} else {  
+  results.list
+}
+
+
+require(data.table)
+test <- rbindlist(results.list)
+
+ggplot(test, aes(as.factor(GEN), PHENO)) + geom_boxplot()
+ggplot(test, aes(GEN, PRDM9)) + geom_point() + stat_smooth()
 
