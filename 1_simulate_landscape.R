@@ -148,7 +148,7 @@ for(it in 1:iterations){
     
     rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
     if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-    if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[[sample.int(2, 1)]]
+    if(length(rec.pos) == 0) gen.1[[i]][1] <- haplos[sample.int(2, 1)]
     
     
     if(length(rec.pos) > 0){
@@ -165,7 +165,7 @@ for(it in 1:iterations){
         if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
       }
       
-      gen.1[[i]][["MOTHER"]] <- unlist(fragments)
+      gen.1[[i]][[1]] <- list(unlist(fragments))
       
     }
     
@@ -181,7 +181,7 @@ for(it in 1:iterations){
     
     rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
     if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-    if(length(rec.pos) == 0) gen.1[[i]]["FATHER"] <- haplos[sample.int(2, 1)][[1]]
+    if(length(rec.pos) == 0) gen.1[[i]][[2]] <- haplos[sample.int(2, 1)]
     
     
     if(length(rec.pos) > 0){
@@ -198,7 +198,7 @@ for(it in 1:iterations){
         if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][[1]][start.pos[k]:stop.pos[k]]
       }
       
-      gen.1[[i]][["FATHER"]] <- unlist(fragments)
+      gen.1[[i]][[2]] <- list(unlist(fragments))
       
     }
     
@@ -246,5 +246,5 @@ for(it in 1:iterations){
   
 }
 
-
+do.call(rbind, results.list)
 
