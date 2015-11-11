@@ -31,8 +31,8 @@
 # test values for optimisation:
 # n.found.hap     <- 100    # Number of founder haplotypes generated
 # n.loci          <- 100    # Number of loci underlying the trait
-# n.f             <- 100    # Number of females
-# n.m             <- 100    # Number of males
+# n.f             <- 10    # Number of females
+# n.m             <- 10    # Number of males
 # f.RS            <- 2      # Number of offspring per female
 # f.RS.Pr         <- 1      # Probability of number of offspring per female.
 # sel.thresh.f    <- 1      # Selection threshold
@@ -41,9 +41,10 @@
 # n.generations   <- 100
 # n.iterations    <- 100
 # return.haplos   <- TRUE
+# restart.on.extinction <- TRUE
 
 
-simPopulationLandscape <- function(
+simPopulationLandscape<- function(
   map.dist,
   maf.info,
   n.found.hap = 100,
@@ -57,7 +58,8 @@ simPopulationLandscape <- function(
   prdm9.found.maf, 
   n.generations, 
   return.haplos = FALSE,
-  verbose = TRUE){
+  progressBar = TRUE,
+  SaveOnExtinction = FALSE){
   
   #~~ sample two landscapes and initial frequencies of alleles in founders
   
@@ -87,6 +89,8 @@ simPopulationLandscape <- function(
   
   results.list <- list()
   haplo.list <- list()
+  
+  
   
   # NB Sex 1 = male, 2 = female (Xy, XX)
   
@@ -131,11 +135,25 @@ simPopulationLandscape <- function(
   
   #~~ generate spaces for diplotypes of two offspring per female and sample best fathers
   
+  if(progressBar == TRUE) pb = txtProgressBar(min = 1, max = n.generations, style = 3) 
+    
   for(gen in 1:n.generations){
     
-    if(verbose == TRUE) print(paste("Generation", gen))
+    if(progressBar == TRUE) setTxtProgressBar(pb,gen)
     
     length.out <- f.RS*nrow(subset(ref.0, SEX == 2 & Bred == 1))
+    if(any(c(length.out == 0, length(table(ref.0$SEX)) == 1) == TRUE)) {
+      if(SaveOnExtinction == TRUE){
+        if(return.haplos == TRUE){
+          return(list(results = results.list, haplos = haplo.list, maps = map.list))
+        } else {  
+          return(list(results = results.list, maps = map.list))
+        }
+      }
+      
+      stop(paste("Population has gone extinct at generation", gen))
+    }
+    
     
     ref.1 <- data.frame(GEN         = gen,
                         ID          = 1:length.out,
@@ -258,11 +276,10 @@ simPopulationLandscape <- function(
   #~~ Parse output
   
   if(return.haplos == TRUE){
-    list(results = results.list, haplos = haplo.list)
+    list(results = results.list, haplos = haplo.list, maps = map.list)
   } else {  
-    results.list
+    list(results = results.list, maps = map.list)
   }
 }
-
 
 

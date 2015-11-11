@@ -1,6 +1,7 @@
 
-map <- read.table("data/soay_map.txt", header = T)
+library(rbenchmark)
 
+map <- read.table("data/soay_map.txt", header = T)
 map.dist <- diff(map$cM.Position.Sex.Averaged[seq(1, nrow(map), 10)])
 map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
 maf.info <- map$MAF
@@ -9,8 +10,8 @@ maf.info <- map$MAF
 # test values for optimisation:
 n.found.hap     <- 100    # Number of founder haplotypes generated
 n.loci          <- 100    # Number of loci underlying the trait
-n.f             <- 10    # Number of females
-n.m             <- 10    # Number of males
+n.f             <- 100    # Number of females
+n.m             <- 100    # Number of males
 f.RS            <- 2      # Number of offspring per female
 f.RS.Pr         <- 1      # Probability of number of offspring per female.
 sel.thresh.f    <- 1      # Selection threshold
@@ -20,6 +21,8 @@ n.generations   <- 100
 n.iterations    <- 100
 return.haplos   <- TRUE
 restart.on.extinction <- TRUE
+progressBar = TRUE
+SaveOnExtinction = FALSE
 
 
 # simPopulationLandscape<- function(
@@ -38,83 +41,83 @@ restart.on.extinction <- TRUE
 #   return.haplos = FALSE,
 #   progressBar = TRUE,
 #   SaveOnExtinction = FALSE){
-  
-  #~~ sample two landscapes and initial frequencies of alleles in founders
-  
-  r1   <- sample(map.dist/100, n.loci)
-  r2   <- sample(map.dist/100, n.loci)
-  rhet <- (r1 + r2)/2 
-  
-  ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
-         aes(x, r, colour = factor(map))) +
-    geom_line() +
-    scale_colour_brewer(palette = "Set1")
-  
-  map.list <- list(r1, rhet, r2)
-  
-  #~~ fix MAFs so that they show a range of frequencies between 0 & 1
-  
-  mafs.found <- sample(maf.info, n.loci)
-  mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2
-  
-  #~~ determine PRDM9 genotype frequencies based on HWE
-  
-  p <- prdm9.found.maf
-  q <- 1 - p
-  prdm9.found.prs <- c(p^2, 2*p*q, q^2)
-  
-  #~~ Run Simulation
-  
-  results.list <- list()
-  haplo.list <- list()
-  
-  
-  
-  # NB Sex 1 = male, 2 = female (Xy, XX)
-  
-  #~~ generate founder haplotypes
-  
-  founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < mafs.found) + 0L)
-  
-  #~~ generate diplotypes for n.f females and n.m males
-  
-  gen.0 <- list()
-  gen.0[1:(n.f + n.m)] <- list(list(MOTHER = NA, FATHER = NA))
-  
+
+#~~ sample two landscapes and initial frequencies of alleles in founders
+
+
+benchmark(r1   <- sample(map.dist/100, n.loci))  #0.02
+benchmark(r2   <- sample(map.dist/100, n.loci))  #0.02
+rhet <- (r1 + r2)/2
+
+map.list <- list(r1, rhet, r2)
+
+#~~ fix MAFs so that they show a range of frequencies between 0 & 1
+
+benchmark(mafs.found <- sample(maf.info, n.loci))  #0.04
+benchmark(mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2)  #0.01
+
+#~~ determine PRDM9 genotype frequencies based on HWE
+
+p <- prdm9.found.maf
+q <- 1 - p
+prdm9.found.prs <- c(p^2, 2*p*q, q^2)
+
+#~~ Run Simulation
+
+results.list <- list()
+haplo.list <- list()
+
+
+
+# NB Sex 1 = male, 2 = female (Xy, XX)
+
+#~~ generate founder haplotypes
+
+benchmark(founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < mafs.found) + 0L)) #0.25
+
+#~~ generate diplotypes for n.f females and n.m males
+
+gen.0 <- list()
+gen.0[1:(n.f + n.m)] <- list(list(MOTHER = NA, FATHER = NA))
+
+benchmark({       # 1.05     
   for(i in 1:(n.f + n.m)){
     gen.0[[i]]["MOTHER"] <- sample(founder.haplos, size = 1)
     gen.0[[i]]["FATHER"] <- sample(founder.haplos, size = 1)
   }
-  
-  #~~ create reference table
-  
-  ref.0 <- data.frame(GEN         = 0,
-                      ID          = 1:length(gen.0),
-                      MOTHER      = NA,
-                      FATHER      = NA,
-                      SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
-                      PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
-                      PHENO       = sapply(1:length(gen.0), function(x) sum(unlist(gen.0[[x]]))))
-  
-  m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)]
-  f.thresh <- sort(subset(ref.0, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.0, SEX == 2)$PHENO)]
-  if(length(m.thresh) == 0) m.thresh <- 0
-  if(length(f.thresh) == 0) f.thresh <- 0
-  
-  #~~ remove IDs that will not be selected
-  
-  ref.0$Bred <- 0
-  ref.0$Bred[sort(c(which(ref.0$SEX == 1 & ref.0$PHENO >= m.thresh),
-                    which(ref.0$SEX == 2 & ref.0$PHENO >= f.thresh)))] <- 1
-  
-  
-  results.list[[1]] <- ref.0
-  haplo.list[[1]] <- gen.0
-  
-  #~~ generate spaces for diplotypes of two offspring per female and sample best fathers
-  
-  if(progressBar == TRUE) pb = txtProgressBar(min = 1, max = n.generations, style = 3) 
-  
+})
+
+#~~ create reference table
+# 3.93
+benchmark(ref.0 <- data.frame(GEN         = 0,
+                    ID          = 1:length(gen.0),
+                    MOTHER      = NA,
+                    FATHER      = NA,
+                    SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
+                    PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
+                    PHENO       = sapply(1:length(gen.0), function(x) sum(unlist(gen.0[[x]])))))
+
+# 0.11 and 0.11
+benchmark(m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)])
+benchmark(f.thresh <- sort(subset(ref.0, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.0, SEX == 2)$PHENO)])
+if(length(m.thresh) == 0) m.thresh <- 0
+if(length(f.thresh) == 0) f.thresh <- 0
+
+#~~ remove IDs that will not be selected
+
+ref.0$Bred <- 0
+benchmark(ref.0$Bred[sort(c(which(ref.0$SEX == 1 & ref.0$PHENO >= m.thresh), #0.03
+                  which(ref.0$SEX == 2 & ref.0$PHENO >= f.thresh)))] <- 1)
+
+
+results.list[[1]] <- ref.0
+haplo.list[[1]] <- gen.0
+
+#~~ generate spaces for diplotypes of two offspring per female and sample best fathers
+
+benchmark(if(progressBar == TRUE) pb = txtProgressBar(min = 1, max = n.generations, style = 3) )
+
+system.time({
   for(gen in 1:n.generations){
     
     if(progressBar == TRUE) setTxtProgressBar(pb,gen)
@@ -250,13 +253,14 @@ restart.on.extinction <- TRUE
     ref.0 <- ref.1
     
   }
-  
-  #~~ Parse output
-  
-  if(return.haplos == TRUE){
-    list(results = results.list, haplos = haplo.list, maps = map.list)
-  } else {  
-    list(results = results.list, maps = map.list)
-  }
+})
+
+#~~ Parse output
+
+if(return.haplos == TRUE){
+  list(results = results.list, haplos = haplo.list, maps = map.list)
+} else {  
+  list(results = results.list, maps = map.list)
+}
 }
 
