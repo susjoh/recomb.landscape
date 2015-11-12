@@ -28,11 +28,11 @@
 #' @param verbose (Default = TRUE) Should information on progress be printed?
 
 
-# test values for optimisation:
+#test values for optimisation:
 # n.found.hap     <- 100    # Number of founder haplotypes generated
 # n.loci          <- 100    # Number of loci underlying the trait
-# n.f             <- 10    # Number of females
-# n.m             <- 10    # Number of males
+# n.f             <- 100    # Number of females
+# n.m             <- 100    # Number of males
 # f.RS            <- 2      # Number of offspring per female
 # f.RS.Pr         <- 1      # Probability of number of offspring per female.
 # sel.thresh.f    <- 1      # Selection threshold
@@ -42,6 +42,13 @@
 # n.iterations    <- 100
 # return.haplos   <- TRUE
 # restart.on.extinction <- TRUE
+# progressBar = TRUE
+# 
+# map <- read.table("data/soay_map.txt", header = T)
+# map.dist <- diff(map$cM.Position.Sex.Averaged[seq(1, nrow(map), 10)])
+# map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
+# maf.info <- map$MAF
+
 
 
 simPopulationLandscape<- function(
@@ -62,15 +69,15 @@ simPopulationLandscape<- function(
   SaveOnExtinction = FALSE){
   
   #~~ sample two landscapes and initial frequencies of alleles in founders
-  
+    
   r1   <- sample(map.dist/100, n.loci)
   r2   <- sample(map.dist/100, n.loci)
   rhet <- (r1 + r2)/2 
   
-  ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
-         aes(x, r, colour = factor(map))) +
-    geom_line() +
-    scale_colour_brewer(palette = "Set1")
+#   ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
+#          aes(x, r, colour = factor(map))) +
+#     geom_line() +
+#     scale_colour_brewer(palette = "Set1")
   
   map.list <- list(r1, rhet, r2)
   
@@ -116,8 +123,8 @@ simPopulationLandscape<- function(
                       FATHER      = NA,
                       SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
                       PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
-                      PHENO       = sapply(1:length(gen.0), function(x) sum(unlist(gen.0[[x]]))))
-  
+                      PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])))
+
   m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)]
   f.thresh <- sort(subset(ref.0, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.0, SEX == 2)$PHENO)]
   if(length(m.thresh) == 0) m.thresh <- 0
@@ -141,8 +148,9 @@ simPopulationLandscape<- function(
     
     if(progressBar == TRUE) setTxtProgressBar(pb,gen)
     
-    length.out <- f.RS*nrow(subset(ref.0, SEX == 2 & Bred == 1))
-    if(any(c(length.out == 0, length(table(ref.0$SEX)) == 1) == TRUE)) {
+    length.out <- f.RS*length(which(ref.0$SEX == 2 & ref.0$Bred == 1))
+    
+    if(any(c(length.out == 0, length(unique(ref.0$SEX)) == 1) == TRUE)) {
       if(SaveOnExtinction == TRUE){
         if(return.haplos == TRUE){
           return(list(results = results.list, haplos = haplo.list, maps = map.list))
@@ -157,9 +165,9 @@ simPopulationLandscape<- function(
     
     ref.1 <- data.frame(GEN         = gen,
                         ID          = 1:length.out,
-                        MOTHER      = rep(subset(ref.0, SEX == 2 & Bred == 1)$ID, each = f.RS),
-                        FATHER      = sample(subset(ref.0, SEX == 1 & Bred == 1)$ID, size = length.out, replace = T),
-                        SEX         = sapply(1:length.out, function(x) (runif(1) < 0.5) + 1L),
+                        MOTHER      = rep(ref.0$ID[which(ref.0$SEX == 2 & ref.0$Bred == 1)], each = f.RS),
+                        FATHER      = sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)], size = length.out, replace = T),
+                        SEX         = (runif(length.out) < 0.5) + 1L,
                         PRDM9       = NA,
                         PHENO       = NA)
     
@@ -249,7 +257,7 @@ simPopulationLandscape<- function(
     
     rm(haplos, rmap, rec.pos, start.pos, stop.pos, fragments, k, prdm9.mum, prdm9.mum.2, prdm9.dad, prdm9.dad.2)
     
-    ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(unlist(gen.1[[x]])))
+    ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(gen.1[[x]][[1]]) + sum(gen.1[[x]][[2]]))
     
     
     #~~ Deal with IDs that will be selected
@@ -281,5 +289,7 @@ simPopulationLandscape<- function(
     list(results = results.list, maps = map.list)
   }
 }
+
+
 
 

@@ -54,7 +54,7 @@ map.list <- list(r1, rhet, r2)
 #~~ fix MAFs so that they show a range of frequencies between 0 & 1
 
 benchmark(mafs.found <- sample(maf.info, n.loci))  #0.04
-benchmark(mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2)  #0.01
+mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2
 
 #~~ determine PRDM9 genotype frequencies based on HWE
 
@@ -80,22 +80,28 @@ benchmark(founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < 
 gen.0 <- list()
 gen.0[1:(n.f + n.m)] <- list(list(MOTHER = NA, FATHER = NA))
 
-benchmark({       # 1.05     
+
+benchmark({       # 0.64  
+  gen.0 <- list()
+  gen.0[1:(n.f + n.m)] <- list(list(MOTHER = NA, FATHER = NA))
+  
   for(i in 1:(n.f + n.m)){
     gen.0[[i]]["MOTHER"] <- sample(founder.haplos, size = 1)
     gen.0[[i]]["FATHER"] <- sample(founder.haplos, size = 1)
   }
 })
 
+
+
 #~~ create reference table
-# 3.93
+# 3.93 to 0.89
 benchmark(ref.0 <- data.frame(GEN         = 0,
-                    ID          = 1:length(gen.0),
-                    MOTHER      = NA,
-                    FATHER      = NA,
-                    SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
-                    PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
-                    PHENO       = sapply(1:length(gen.0), function(x) sum(unlist(gen.0[[x]])))))
+                              ID          = 1:length(gen.0),
+                              MOTHER      = NA,
+                              FATHER      = NA,
+                              SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
+                              PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
+                              PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]]))))
 
 # 0.11 and 0.11
 benchmark(m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)])
@@ -107,7 +113,7 @@ if(length(f.thresh) == 0) f.thresh <- 0
 
 ref.0$Bred <- 0
 benchmark(ref.0$Bred[sort(c(which(ref.0$SEX == 1 & ref.0$PHENO >= m.thresh), #0.03
-                  which(ref.0$SEX == 2 & ref.0$PHENO >= f.thresh)))] <- 1)
+                            which(ref.0$SEX == 2 & ref.0$PHENO >= f.thresh)))] <- 1)
 
 
 results.list[[1]] <- ref.0
@@ -117,48 +123,51 @@ haplo.list[[1]] <- gen.0
 
 benchmark(if(progressBar == TRUE) pb = txtProgressBar(min = 1, max = n.generations, style = 3) )
 
-system.time({
-  for(gen in 1:n.generations){
-    
-    if(progressBar == TRUE) setTxtProgressBar(pb,gen)
-    
-    length.out <- f.RS*nrow(subset(ref.0, SEX == 2 & Bred == 1))
-    if(any(c(length.out == 0, length(table(ref.0$SEX)) == 1) == TRUE)) {
-      if(SaveOnExtinction == TRUE){
-        if(return.haplos == TRUE){
-          return(list(results = results.list, haplos = haplo.list, maps = map.list))
-        } else {  
-          return(list(results = results.list, maps = map.list))
-        }
+
+for(gen in 1:n.generations){
+  
+  if(progressBar == TRUE) setTxtProgressBar(pb,gen)
+  
+  length.out <- f.RS*length(which(ref.0$SEX == 2 & ref.0$Bred == 1))
+  
+  if(any(c(length.out == 0, length(unique(ref.0$SEX)) == 1) == TRUE)) {
+    if(SaveOnExtinction == TRUE){
+      if(return.haplos == TRUE){
+        return(list(results = results.list, haplos = haplo.list, maps = map.list))
       }
-      
-      stop(paste("Population has gone extinct at generation", gen))
+      if(return.haplos == FALSE){
+        return(list(results = results.list, maps = map.list))
+      }
     }
-    
-    
-    ref.1 <- data.frame(GEN         = gen,
-                        ID          = 1:length.out,
-                        MOTHER      = rep(subset(ref.0, SEX == 2 & Bred == 1)$ID, each = f.RS),
-                        FATHER      = sample(subset(ref.0, SEX == 1 & Bred == 1)$ID, size = length.out, replace = T),
-                        SEX         = sapply(1:length.out, function(x) (runif(1) < 0.5) + 1L),
-                        PRDM9       = NA,
-                        PHENO       = NA)
-    
-    #~~ Transmit a gamete from parents to offspring
-    
-    gen.1 <- list()
-    gen.1[1:length.out] <- list(list(MOTHER = NA, FATHER = NA))
-    
+    stop(paste("Population has gone extinct at generation", gen))
+  }
+  
+  ref.1 <- data.frame(GEN         = gen, #0.34
+                      ID          = 1:length.out,
+                      MOTHER      = rep(ref.0$ID[which(ref.0$SEX == 2 & ref.0$Bred == 1)], each = f.RS),
+                      FATHER      = sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)], size = length.out, replace = T),
+                      SEX         = (runif(length.out) < 0.5) + 1L,
+                      PRDM9       = NA,
+                      PHENO       = NA)
+  
+  #~~ Transmit a gamete from parents to offspring
+  
+  gen.1 <- list()
+  gen.1[1:length.out] <- list(list(MOTHER = NA, FATHER = NA))
+  
+  # 14.03 for loop
     for(i in 1:length.out){
       
       #~~ MOTHER ~~#
       
-      haplos <- gen.0   [[ref.1$MOTHER[i]]]
-      rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]]
+      benchmark(haplos <- gen.0   [[ref.1$MOTHER[i]]], replications = 10000)
+      benchmark(rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]], replications = 10000)
       
       #~~ sample crossover positions
+  
+      # YOU ARE HERE #######################################
       
-      rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
+      benchmark(rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1), replications = 10000)
       if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
       if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[sample.int(2, 1)]
       
@@ -227,33 +236,36 @@ system.time({
       
       
     }
-    
-    rm(haplos, rmap, rec.pos, start.pos, stop.pos, fragments, k, prdm9.mum, prdm9.mum.2, prdm9.dad, prdm9.dad.2)
-    
-    ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(unlist(gen.1[[x]])))
-    
-    
-    #~~ Deal with IDs that will be selected
-    
+  
+  
+  rm(haplos, rmap, rec.pos, start.pos, stop.pos, fragments, k, prdm9.mum, prdm9.mum.2, prdm9.dad, prdm9.dad.2)
+  
+  benchmark(ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(gen.1[[x]][[1]]) + sum(gen.1[[x]][[2]])))  
+  #2.92
+  
+  #~~ Deal with IDs that will be selected
+  
+  benchmark({  #0.28
     m.thresh <- sort(subset(ref.1, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.1, SEX == 1)$PHENO)]
     f.thresh <- sort(subset(ref.1, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.1, SEX == 2)$PHENO)]
     if(length(m.thresh) == 0) m.thresh <- 0
     if(length(f.thresh) == 0) f.thresh <- 0
-    
-    #~~ remove IDs that will not be selected
-    
-    ref.1$Bred <- 0
-    ref.1$Bred[sort(c(which(ref.1$SEX == 1 & ref.1$PHENO >= m.thresh),
-                      which(ref.1$SEX == 2 & ref.1$PHENO >= f.thresh)))] <- 1
-    
-    results.list[[(gen + 1)]] <- ref.1
-    if(return.haplos == TRUE) haplo.list[[(gen + 1)]] <- gen.1
-    
-    gen.0 <- gen.1
-    ref.0 <- ref.1
-    
-  }
-})
+  })
+  
+  #~~ remove IDs that will not be selected
+  
+  ref.1$Bred <- 0
+  ref.1$Bred[sort(c(which(ref.1$SEX == 1 & ref.1$PHENO >= m.thresh),
+                    which(ref.1$SEX == 2 & ref.1$PHENO >= f.thresh)))] <- 1
+  
+  results.list[[(gen + 1)]] <- ref.1
+  if(return.haplos == TRUE) haplo.list[[(gen + 1)]] <- gen.1
+  
+  gen.0 <- gen.1
+  ref.0 <- ref.1
+  
+}
+
 
 #~~ Parse output
 
