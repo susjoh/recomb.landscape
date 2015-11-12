@@ -48,7 +48,7 @@
 # map.dist <- diff(map$cM.Position.Sex.Averaged[seq(1, nrow(map), 10)])
 # map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
 # maf.info <- map$MAF
-
+# SaveOnExtinction = TRUE
 
 
 simPopulationLandscape<- function(
@@ -98,7 +98,6 @@ simPopulationLandscape<- function(
   haplo.list <- list()
   
   
-  
   # NB Sex 1 = male, 2 = female (Xy, XX)
   
   #~~ generate founder haplotypes
@@ -125,8 +124,9 @@ simPopulationLandscape<- function(
                       PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
                       PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])))
 
-  m.thresh <- sort(subset(ref.0, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.0, SEX == 1)$PHENO)]
-  f.thresh <- sort(subset(ref.0, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.0, SEX == 2)$PHENO)]
+  m.thresh <- sort(ref.0$PHENO[which(ref.0$SEX == 1)])[(1-sel.thresh.m)*length(ref.0$PHENO[which(ref.0$SEX == 1)])]
+  f.thresh <- sort(ref.0$PHENO[which(ref.0$SEX == 2)])[(1-sel.thresh.f)*length(ref.0$PHENO[which(ref.0$SEX == 2)])]
+
   if(length(m.thresh) == 0) m.thresh <- 0
   if(length(f.thresh) == 0) f.thresh <- 0
   
@@ -262,8 +262,9 @@ simPopulationLandscape<- function(
     
     #~~ Deal with IDs that will be selected
     
-    m.thresh <- sort(subset(ref.1, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.1, SEX == 1)$PHENO)]
-    f.thresh <- sort(subset(ref.1, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.1, SEX == 2)$PHENO)]
+    m.thresh <- sort(ref.1$PHENO[which(ref.1$SEX == 1)])[(1-sel.thresh.m)*length(ref.1$PHENO[which(ref.1$SEX == 1)])]
+    f.thresh <- sort(ref.1$PHENO[which(ref.1$SEX == 2)])[(1-sel.thresh.f)*length(ref.1$PHENO[which(ref.1$SEX == 2)])]
+  
     if(length(m.thresh) == 0) m.thresh <- 0
     if(length(f.thresh) == 0) f.thresh <- 0
     

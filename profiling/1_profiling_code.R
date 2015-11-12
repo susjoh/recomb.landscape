@@ -155,102 +155,100 @@ for(gen in 1:n.generations){
   gen.1 <- list()
   gen.1[1:length.out] <- list(list(MOTHER = NA, FATHER = NA))
   
-  # 14.03 for loop
-    for(i in 1:length.out){
+  for(i in 1:length.out){
+    
+    # 3.98 seconds for 10K replications up to PRDM9 part
+    #~~ MOTHER ~~#
+    # 0.27 and 0.65 at 10K replicates
+    haplos <- gen.0   [[ref.1$MOTHER[i]]]
+    rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]]
+    
+    #~~ sample crossover positions
+    
+    
+    rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1) #0.25 @ 10K
+    if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
+    if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[sample.int(2, 1)] #0.25 @ 10K
+    
+    
+    if(length(rec.pos) > 0){   #0.58 @ 10K
       
-      #~~ MOTHER ~~#
+      haplos <- haplos[sample.int(2, 2, replace = F)] #0.14
       
-      benchmark(haplos <- gen.0   [[ref.1$MOTHER[i]]], replications = 10000)
-      benchmark(rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]], replications = 10000)
+      start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)  #0.08
+      stop.pos <- c(rec.pos, length(rmap)) #0.05
       
-      #~~ sample crossover positions
-  
-      # YOU ARE HERE #######################################
+      fragments <- list()
       
-      benchmark(rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1), replications = 10000)
-      if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-      if(length(rec.pos) == 0) gen.1[[i]]["MOTHER"] <- haplos[sample.int(2, 1)]
-      
-      
-      if(length(rec.pos) > 0){
-        
-        haplos <- haplos[sample.int(2, 2, replace = F)]
-        
-        start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
-        stop.pos <- c(rec.pos, length(rmap))
-        
-        fragments <- list()
-        
-        for(k in 1:length(start.pos)){
-          if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
-          if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
-        }
-        
-        gen.1[[i]]["MOTHER"] <- list(unlist(fragments))
-        
+      for(k in 1:length(start.pos)){  #0.03
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
       }
       
-      #~~ FATHER ~~#
-      
-      haplos <- gen.0   [[ref.1$FATHER[i]]]
-      rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$FATHER[i])]]]
-      
-      #~~ sample crossover positions
-      
-      rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
-      if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
-      if(length(rec.pos) == 0) gen.1[[i]]["FATHER"] <- haplos[sample.int(2, 1)]
-      
-      
-      if(length(rec.pos) > 0){
-        
-        haplos <- haplos[sample.int(2, 2, replace = F)]
-        
-        start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
-        stop.pos <- c(rec.pos, length(rmap))
-        
-        fragments <- list()
-        
-        for(k in 1:length(start.pos)){
-          if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
-          if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
-        }
-        
-        gen.1[[i]]["FATHER"] <- list(unlist(fragments))
-        
-      }
-      
-      #~~ Deal with PRDM9
-      
-      prdm9.mum <- ref.0$PRDM9[which(ref.0$ID == ref.1$MOTHER[i])]
-      prdm9.mum.2 <- ifelse(prdm9.mum == 1, 0,
-                            ifelse(prdm9.mum == 3, 1,
-                                   ifelse(prdm9.mum == 2, (runif(1) < 0.5) + 0L, NA)))
-      
-      prdm9.dad <- ref.0$PRDM9[which(ref.0$ID == ref.1$FATHER[i])]
-      prdm9.dad.2 <- ifelse(prdm9.dad == 1, 0,
-                            ifelse(prdm9.dad == 3, 1,
-                                   ifelse(prdm9.dad == 2, (runif(1) < 0.5) + 0L, NA)))
-      
-      ref.1$PRDM9[i] <- prdm9.mum.2 + prdm9.dad.2 + 1
-      
+      gen.1[[i]]["MOTHER"] <- list(unlist(fragments)) #0.14
       
     }
+    
+    #~~ FATHER ~~#
+    
+    haplos <- gen.0   [[ref.1$FATHER[i]]]
+    rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$FATHER[i])]]]
+    
+    #~~ sample crossover positions
+    
+    rec.pos <- which(((runif(length(rmap)) < rmap) + 0L) == 1)
+    if(length(rmap) %in% rec.pos) rec.pos <- rec.pos[-which(rec.pos == length(rmap))]
+    if(length(rec.pos) == 0) gen.1[[i]]["FATHER"] <- haplos[sample.int(2, 1)]
+    
+    
+    if(length(rec.pos) > 0){
+      
+      haplos <- haplos[sample.int(2, 2, replace = F)]
+      
+      start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
+      stop.pos <- c(rec.pos, length(rmap))
+      
+      fragments <- list()
+      
+      for(k in 1:length(start.pos)){
+        if(k %% 2 != 0) fragments[[k]] <- haplos[[1]][start.pos[k]:stop.pos[k]]
+        if(k %% 2 == 0) fragments[[k]] <- haplos[[2]][start.pos[k]:stop.pos[k]]
+      }
+      
+      gen.1[[i]]["FATHER"] <- list(unlist(fragments))
+      
+    }
+    
+    #~~ Deal with PRDM9
+    
+    
+    prdm9.mum <- ref.0$PRDM9[which(ref.0$ID == ref.1$MOTHER[i])] #0.71
+    prdm9.mum.2 <- ifelse(prdm9.mum == 1, 0,
+                          ifelse(prdm9.mum == 3, 1,
+                                 ifelse(prdm9.mum == 2, (runif(1) < 0.5) + 0L, NA)))  #0.14
+    
+    prdm9.dad <- ref.0$PRDM9[which(ref.0$ID == ref.1$FATHER[i])]
+    prdm9.dad.2 <- ifelse(prdm9.dad == 1, 0,
+                          ifelse(prdm9.dad == 3, 1,
+                                 ifelse(prdm9.dad == 2, (runif(1) < 0.5) + 0L, NA)))
+    
+    ref.1$PRDM9[i] <- prdm9.mum.2 + prdm9.dad.2 + 1
+    
+  }
   
   
   rm(haplos, rmap, rec.pos, start.pos, stop.pos, fragments, k, prdm9.mum, prdm9.mum.2, prdm9.dad, prdm9.dad.2)
   
-  benchmark(ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(gen.1[[x]][[1]]) + sum(gen.1[[x]][[2]])))  
-  #2.92
+  ref.1$PHENO <- sapply(1:length(gen.1), function(x) sum(gen.1[[x]][[1]]) + sum(gen.1[[x]][[2]]))  #2.92
   
   #~~ Deal with IDs that will be selected
   
-  benchmark({  #0.28
-    m.thresh <- sort(subset(ref.1, SEX == 1)$PHENO)[(1-sel.thresh.m)*length(subset(ref.1, SEX == 1)$PHENO)]
-    f.thresh <- sort(subset(ref.1, SEX == 2)$PHENO)[(1-sel.thresh.f)*length(subset(ref.1, SEX == 2)$PHENO)]
-    if(length(m.thresh) == 0) m.thresh <- 0
-    if(length(f.thresh) == 0) f.thresh <- 0
-  })
+  #4.27
+  m.thresh <- sort(ref.1$PHENO[which(ref.1$SEX == 1)])[(1-sel.thresh.m)*length(ref.1$PHENO[which(ref.1$SEX == 1)])]
+  f.thresh <- sort(ref.1$PHENO[which(ref.1$SEX == 2)])[(1-sel.thresh.m)*length(ref.1$PHENO[which(ref.1$SEX == 2)])]
+  
+  if(length(m.thresh) == 0) m.thresh <- 0
+  if(length(f.thresh) == 0) f.thresh <- 0
   
   #~~ remove IDs that will not be selected
   

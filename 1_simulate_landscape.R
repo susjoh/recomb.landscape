@@ -30,7 +30,7 @@ map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
 maf.info <- map$MAF
 
 benchmark(x <- restartOnExtinct(simPopulationLandscape(map.dist = map.dist, maf.info = maf.info,
-                                        n.found.hap = 50, n.loci = 50, n.f = 100, 
+                                        n.found.hap = 100, n.loci = 100, n.f = 100, 
                                         n.m = 100, f.RS = 2, sel.thresh.f = 1, sel.thresh.m = 0.2,
                                         prdm9.found.maf = 0.4, n.generations = 100)$results), replications = 1)
 
