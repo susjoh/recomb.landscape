@@ -26,6 +26,7 @@ profvis({
   restart.on.extinction <- TRUE
   progressBar = TRUE
   SaveOnExtinction = FALSE
+  FounderInfo = NULL
   
   
   #~~ sample two landscapes and initial frequencies of alleles in founders
@@ -85,7 +86,8 @@ profvis({
                       ID          = 1:length(gen.0),
                       MOTHER      = NA,
                       FATHER      = NA,
-                      SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
+                      #SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
+                      SEX         = rep(1:2, length.out = length(gen.0)),
                       PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
                       PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])))
   
@@ -150,6 +152,7 @@ profvis({
       # 0.27 and 0.65 at 10K replicates
       haplos <- gen.0   [[ref.1$MOTHER[i]]]
       rmap   <- map.list[[ref.0$PRDM9 [which(ref.0$ID == ref.1$MOTHER[i])]]]
+      
       
       #~~ sample crossover positions
       
