@@ -44,8 +44,8 @@ createFounderObject<- function(
   
   #~~ sample two landscapes and initial frequencies of alleles in founders
   
-  r1   <- sample(map.dist/100, n.loci)
-  r2   <- sample(map.dist/100, n.loci)
+  r1   <- sample(map.dist/100, replace = T, n.loci)
+  r2   <- sample(map.dist/100, replace = T, n.loci)
   rhet <- (r1 + r2)/2 
   
   #   ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),

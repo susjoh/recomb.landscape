@@ -72,14 +72,14 @@ simPopulationLandscape<- function(
   #~~ sample two landscapes and initial frequencies of alleles in founders
   
   if(is.null(FounderObject)){
-    r1   <- sample(map.dist/100, n.loci)
-    r2   <- sample(map.dist/100, n.loci)
+    r1   <- sample(map.dist/100, replace = T, n.loci)
+    r2   <- sample(map.dist/100, replace = T, n.loci)
     rhet <- (r1 + r2)/2 
     
-    #   ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
-    #          aes(x, r, colour = factor(map))) +
-    #     geom_line() +
-    #     scale_colour_brewer(palette = "Set1")
+      ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
+             aes(x, r, colour = factor(map))) +
+        geom_line() +
+        scale_colour_brewer(palette = "Set1")
     
     map.list <- list(r1, rhet, r2)
     
@@ -122,8 +122,8 @@ simPopulationLandscape<- function(
                         FATHER      = NA,
                         #SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
                         SEX         = rep(1:2, length.out = length(gen.0)),
-                        PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
-                        PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])))
+                        PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])),
+                        PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)))
     
   } else {
     
@@ -143,7 +143,7 @@ simPopulationLandscape<- function(
     q <- 1 - p
     prdm9.found.prs <- c(p^2, 2*p*q, q^2)
     
-    ref.0$PRDM9 = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs))    
+    ref.0$PRDM9 = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs))        
   }
   
   m.thresh <- sort(ref.0$PHENO[which(ref.0$SEX == 1)])[(1-sel.thresh.m)*length(ref.0$PHENO[which(ref.0$SEX == 1)])]
@@ -184,7 +184,7 @@ simPopulationLandscape<- function(
         }
       }
       
-      stop(paste("Population has gone extinct at generation", gen))
+      break(paste("Population has gone extinct at generation", gen))
     }
     
     
@@ -193,8 +193,8 @@ simPopulationLandscape<- function(
                         MOTHER      = rep(ref.0$ID[which(ref.0$SEX == 2 & ref.0$Bred == 1)], each = f.RS),
                         FATHER      = sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)], size = length.out, replace = T),
                         SEX         = (runif(length.out) < 0.5) + 1L,
-                        PRDM9       = NA,
-                        PHENO       = NA)
+                        PHENO       = NA,
+                        PRDM9       = NA)
     
     #~~ Transmit a gamete from parents to offspring
     

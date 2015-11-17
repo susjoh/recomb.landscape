@@ -100,9 +100,8 @@ df2 <- test[,list(MeanPHENO=mean(PHENO), PopSize = length(PHENO)),
 ggplot(df2, aes(GEN, PopSize, col = PRDM9.Start, group = interaction(Simulation))) + geom_line()
 
 
-ggplot(df1, aes(GEN, MeanPHENO, col = PRDM9.Start, group = interaction(Simulation))) +
+ggplot(df1, aes(GEN, MeanPHENO, col = PRDM9.Start)) +
   geom_point(alpha = 0) +
   stat_smooth() +
-  scale_colour_brewer(palette = "Set1") +
-  facet_wrap(~PRDM9.Start)
+  scale_colour_brewer(palette = "Set1") 
 
