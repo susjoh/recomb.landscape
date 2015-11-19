@@ -26,15 +26,25 @@
 # f.RS.Pr         <- 1      # Probability of number of offspring per female.
 # 
 # 
+# 
 # map <- read.table("data/soay_map.txt", header = T)
 # map.dist <- diff(map$cM.Position.Sex.Averaged[seq(1, nrow(map), 10)])
 # map.dist <- map.dist[which(map.dist >= 0 & map.dist < 2)]
 # maf.info <- map$MAF
-
+# 
+# xr1   <- sample(map.dist/100, replace = T, n.loci)
+# xr2   <- sample(map.dist/100, replace = T, n.loci)
+# xrhet <- (xr1 + xr2)/2
+# 
+# map.list <- list(xr1, xrhet, xr2)
+# 
+# allele.freqs <- map$MAF
+# allele.freqs <- sample(allele.freqs, n.loci)
+# allele.freqs <- allele.freqs + (runif(n.loci) < 0.5)/2
 
 createFounderObject<- function(
-  map.dist,
-  maf.info,
+  map.list,
+  allele.freqs,
   n.found.hap = 100,
   n.loci,
   n.f,
@@ -44,26 +54,11 @@ createFounderObject<- function(
   
   #~~ sample two landscapes and initial frequencies of alleles in founders
   
-  r1   <- sample(map.dist/100, replace = T, n.loci)
-  r2   <- sample(map.dist/100, replace = T, n.loci)
-  rhet <- (r1 + r2)/2 
-  
-  #   ggplot(data.frame(r = c(r1, rhet, r2), map = rep(1:3, each = length(r1)), x = rep(1:length(r1), times = 3)),
-  #          aes(x, r, colour = factor(map))) +
-  #     geom_line() +
-  #     scale_colour_brewer(palette = "Set1")
-  
-  map.list <- list(r1, rhet, r2)
-  
-  #~~ fix MAFs so that they show a range of frequencies between 0 & 1
-  
-  mafs.found <- sample(maf.info, n.loci)
-  mafs.found <- mafs.found + (runif(n.loci) < 0.5)/2
   
   
   #~~ generate founder haplotypes
   
-  founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < mafs.found) + 0L)
+  founder.haplos <- lapply(1:n.found.hap, function (x) (runif(n.loci) < allele.freqs) + 0L)
   
   #~~ generate diplotypes for n.f females and n.m males
   
@@ -94,9 +89,7 @@ createFounderObject<- function(
               n.f = n.f,
               n.m = n.m,
               n.loci = n.loci))
-  
-  ##### START AT m.thresh
-  
+    
 }
 
 
