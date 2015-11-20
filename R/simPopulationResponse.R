@@ -90,8 +90,8 @@ simPopulationResponse<- function(
 
     #~~ determine modifier genotype frequencies based on HWE
     
-    p <- modifier.found.freq
-    q <- 1 - p
+    q <- modifier.found.freq
+    p <- 1 - q
     modifier.found.prs <- c(p^2, 2*p*q, q^2)
     
     #~~ Run Simulation
@@ -139,8 +139,8 @@ simPopulationResponse<- function(
     
     #~~ determine modifier genotype frequencies based on HWE
     
-    p <- modifier.found.freq
-    q <- 1 - p
+    q <- modifier.found.freq
+    p <- 1 - q
     modifier.found.prs <- c(p^2, 2*p*q, q^2)
     
     ref.0$modifier = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = modifier.found.prs))        

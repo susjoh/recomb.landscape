@@ -92,9 +92,9 @@ system.time({
   }
 })
 
-save(res.list.modifier.present, res.list.modifier.absent, 
-     file = paste0("results/g", generations, "_it", iterations,  "_f", no.females, "_m", no.males, "_o", no.offspring,
-                   "_l", no.loci, "_msel", male.sel.thresh, ".Rdata"))
+# save(res.list.modifier.present, res.list.modifier.absent, 
+#      file = paste0("results/g", generations, "_it", iterations,  "_f", no.females, "_m", no.males, "_o", no.offspring,
+#                    "_l", no.loci, "_msel", male.sel.thresh, ".Rdata"))
 
 
 
