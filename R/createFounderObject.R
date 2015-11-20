@@ -51,10 +51,7 @@ createFounderObject<- function(
   n.m,
   f.RS,
   f.RS.Pr = NULL){
-  
-  #~~ sample two landscapes and initial frequencies of alleles in founders
-  
-  
+
   
   #~~ generate founder haplotypes
   
@@ -76,11 +73,8 @@ createFounderObject<- function(
                       ID          = 1:length(gen.0),
                       MOTHER      = NA,
                       FATHER      = NA,
-                      #SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
-                      SEX         = rep(1:2, length.out = length(gen.0)),
-                      #######                      PRDM9       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = prdm9.found.prs)),
+                      SEX         = rep(1:2, times = c(n.m, n.f)),
                       PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])))
-  
   
   return(list(ref.0 = ref.0,
               founder.haplos = founder.haplos,

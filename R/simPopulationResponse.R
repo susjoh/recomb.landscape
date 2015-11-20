@@ -11,18 +11,21 @@
 #' @param map.list A list of maps for the recombination fractions between loci 
 #'   (must be the same length as n.loci). Maps should correspond to maps for the
 #'   homozygote, heterozygote and homozygote of the modifier locus.
-#' @param allele.freqs A vector of minor allele frequencies of trait loci. Is the 
-#'   same length as n.loci
+#' @param allele.freqs A vector of minor allele frequencies of trait loci. Is 
+#'   the same length as n.loci
 #' @param f.RS Female reproductive success. At present simulations only run with
 #'   a specific number of offspring for each female. This will be modified in 
 #'   future.
+#' @param force.equal.sex boolean If f.RS is 2, then each female will have one
+#'   male and one female offspring. Otherwise, offspring will be sampled without
+#'   replacement from a defined number of male and female offspring (at 50:50)
 #' @param f.RS.Pr Not currently used
 #' @param sel.thresh.f Selection threshold in females (value between 0 and 1, 
 #'   where 1 is all females selected)
 #' @param sel.thresh.m Selection threshold in males (value between 0 and 1, 
 #'   where 1 is all males selected)
 #' @param modifier.found.maf The minor allele frequence at the modifier locus, 
-#'   which will modify recombination landscape. An allele frequency of 0 will
+#'   which will modify recombination landscape. An allele frequency of 0 will 
 #'   use the first element of map.list only.
 #' @param n.generations Number of generations to run the simulation
 #' @param return.haplos Should the haplotype information be returned? Default = 
@@ -39,10 +42,12 @@
 # n.f             <- 100    # Number of females
 # n.m             <- 100    # Number of males
 # f.RS            <- 2      # Number of offspring per female
+# force.equal.sex <- TRUE
+# force.equal.male.success <- TRUE
 # f.RS.Pr         <- 1      # Probability of number of offspring per female.
 # sel.thresh.f    <- 1      # Selection threshold
 # sel.thresh.m    <- 0.2    # Selection threshold
-# modifier.found.maf <- 0.4    # Starting freq of modifier
+# modifier.found.freq <- 0.4    # Starting freq of modifier
 # n.generations   <- 100
 # n.iterations    <- 100
 # return.haplos   <- TRUE
@@ -96,8 +101,6 @@ simPopulationResponse<- function(
     
     #~~ Run Simulation
     
-    
-    
     # NB Sex 1 = male, 2 = female (Xy, XX)
     
     #~~ generate founder haplotypes
@@ -120,8 +123,7 @@ simPopulationResponse<- function(
                         ID          = 1:length(gen.0),
                         MOTHER      = NA,
                         FATHER      = NA,
-                        #SEX         = sapply(1:length(gen.0), function(x) (runif(1) < 0.5) + 1L),
-                        SEX         = rep(1:2, length.out = length(gen.0)),
+                        SEX         = rep(1:2, times = c(n.m, n.f)),
                         PHENO       = sapply(1:length(gen.0), function(x) sum(gen.0[[x]][[1]]) + sum(gen.0[[x]][[2]])),
                         modifier       = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = modifier.found.prs)))
     
@@ -187,14 +189,34 @@ simPopulationResponse<- function(
       break(paste("Population has gone extinct at generation", gen))
     }
     
-    
+    if(force.equal.male.success == F){
+      dad.vec <- sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)],
+                        size = length.out, replace = T)
+    } else {
+      dad.vec <- sample(rep(sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)]),
+                            length.out = length.out))
+    }
+
+    if(force.equal.sex == F){
+      sex.vec <- (runif(length.out) < 0.5) + 1L
+    } else {
+      if(f.RS == 2){
+        sex.vec <- rep(1:2, length.out = length.out)
+      } else {
+        sex.vec <- sample(rep(1:2, length.out = length.out), size = length.out, replace = F)
+      }
+                  
+    }
+
+      
     ref.1 <- data.frame(GEN         = gen,
                         ID          = 1:length.out,
                         MOTHER      = rep(ref.0$ID[which(ref.0$SEX == 2 & ref.0$Bred == 1)], each = f.RS),
-                        FATHER      = sample(ref.0$ID[which(ref.0$SEX == 1 & ref.0$Bred == 1)], size = length.out, replace = T),
-                        SEX         = (runif(length.out) < 0.5) + 1L,
+                        FATHER      = dad.vec,
+                        SEX         = sex.vec,
                         PHENO       = NA,
-                        modifier       = NA)
+                        modifier    = NA)
+    rm(dad.vec, sex.vec)
     
     #~~ Transmit a gamete from parents to offspring
     
