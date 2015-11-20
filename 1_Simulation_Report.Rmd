@@ -1,3 +1,6 @@
+---
+output: html_document
+---
 ## Simulation of responses to selection with changes in recombination rate and landscape.
 #### Susan E. Johnston, `r Sys.time()`
 
@@ -9,21 +12,71 @@ The majority of cross-overs occur in regions known as “hotspots” – short s
 
 The following is a simulation study that investigates how responses to selection change when recombination landscape remains stable, incomparison to when it changes due to the action of a single polymorphic modifier locus, such as *PRDM9*.
 
-### Methods
+### Model
 
-**To do in future studies:** There are several assumptions made in the current model that would not hole in a true mammal population that will be modified in future versions of this analysis. These can be considered as a To Do list:
-* At present I assume equal recombination rates in each sex
-* Modifier loci for recombination rate (e.g. *RNF212*/*CPLX1*) may have sex specific or sexually antagonistic effects.
-
-
+```{r echo = F, message=FALSE}
 
 library(ggplot2)
 library(plyr)
 library(data.table)
 
-map <- read.table("data/soay_map.txt", header = T)
+sapply(paste0("R/", dir("R", pattern = ".R")), source)
 
-sapply(paste0("R/", dir("R")), source)
+```
+
+The study simulates selection on a polygenic trait in a mammal population with variation in recombination landscape. The simulations described in this report are modelled on selection regimes in domestic cattle, where males with highest trait values are selected to sire offspring in subsequent generations. 
+
+##### Founder population
+The founder population can be specified in the following example.
+
+```{r}
+
+n.females         <- 50  # Number of females in the founder generation
+n.males           <- 50  # Number of males in the founder generation
+n.offspring       <- 2   # Number of offspring per female
+male.sel.thresh   <- 0.4 # Top proportion of males that will be selected
+female.sel.thresh <- 1   # Top proportion of females that will be selected
+
+```
+
+Here, we will have a founder population of `r n.females` females and `r n.males` males. Each female will have `r n.offspring`. Males that have trait values in the top `r male.sel.thresh*100`% of all males are selected for mating. At present, all females are mated. In running the model, we will force each female to have one offspring of each sex by specifying `force.equal.sex <- TRUE`. If this is specified as `FALSE` then the sex of the offspring is sampled at random. We will also `force.equal.male.success <- TRUE` which will sample males at random, but without replacement, with as equal a contribution of males as possible. If specified as `FALSE` then sires will be sampled randomly from all males above the selection threshold.
+
+##### Specification of recombination landscape and modifier loci.
+
+I will start with a simple model of recombination on a chromosome that is 1 Morgan long (i.e. an average of one crossover per meiosis). The number of loci contributing to the trait are specified. Each locus has two alleles: `0` resulting in no change in phenotype, and `1` that results in an increase in phenotype by one unit. 
+
+```{r}
+n.loci <- 101   # The number of loci contributing to the trait
+```
+
+The function then requires information on the recombination fraction between loci, as well as the allele frequencies of the `0` alleles at each locus. Lets make 
+
+```{r}
+map.1 <- 
+
+```
+
+
+
+iterations <- 5
+no.founder.hap <- 100
+generations <- 100
+
+
+
+
+
+### Future studies and considerations.
+
+There are several assumptions made in the current model that may not hold in a true mammal population. For example:
+
+* At present I assume equal recombination rates in each sex.
+* Modifier loci for recombination rate e.g. *RNF212*/*CLPX1*  may have sex specific or sexually antagonistic effects.
+* Population sizes are allowed to vary naturally, which can result in extinctions or very large increases in population size. 
+
+
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 1. Define simulation parameters and sampling distributions   #
