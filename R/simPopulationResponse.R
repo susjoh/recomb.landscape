@@ -24,9 +24,15 @@
 #'   where 1 is all females selected)
 #' @param sel.thresh.m Selection threshold in males (value between 0 and 1, 
 #'   where 1 is all males selected)
+<<<<<<< HEAD
 #' @param modifier.found.freq The allele frequency of a the modifier locus, 
 #'   which will modify recombination landscape. An allele frequency of 0 will 
 #'   use the first element of map.list only, 1 will use the third element only.
+=======
+#' @param modifier.found.maf The minor allele frequence at the modifier locus, 
+#'   which will modify recombination landscape. An allele frequency of 0 will 
+#'   use the first element of map.list only.
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
 #' @param n.generations Number of generations to run the simulation
 #' @param return.haplos Should the haplotype information be returned? Default = 
 #'   FALSE as will return a large amount of data!
@@ -82,10 +88,15 @@ simPopulationResponse<- function(
   f.RS.Pr = NULL,
   sel.thresh.f,
   sel.thresh.m,
+<<<<<<< HEAD
   modifier.found.freq = 0, 
   n.generations,
   force.equal.male.success = T,
   force.equal.sex = T,
+=======
+  modifier.found.freq, 
+  n.generations, 
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
   return.haplos = FALSE,
   progressBar = TRUE,
   SaveOnExtinction = FALSE,
@@ -97,8 +108,13 @@ simPopulationResponse<- function(
 
     #~~ determine modifier genotype frequencies based on HWE
     
+<<<<<<< HEAD
     q <- modifier.found.freq
     p <- 1 - q
+=======
+    p <- modifier.found.freq
+    q <- 1 - p
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
     modifier.found.prs <- c(p^2, 2*p*q, q^2)
     
     #~~ Run Simulation
@@ -138,12 +154,21 @@ simPopulationResponse<- function(
     ref.0 <- FounderObject$ref.0
     founder.haplos <- founder.haplos <- FounderObject$founder.haplos
     gen.0 <- FounderObject$gen.0
+<<<<<<< HEAD
+=======
+    map.list<- FounderObject$map.list
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
     
     
     #~~ determine modifier genotype frequencies based on HWE
     
+<<<<<<< HEAD
     q <- modifier.found.freq
     p <- 1 - q
+=======
+    p <- modifier.found.freq
+    q <- 1 - p
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
     modifier.found.prs <- c(p^2, 2*p*q, q^2)
     
     ref.0$modifier = sapply(1:length(gen.0), function(x) sample(1:3, size = 1, prob = modifier.found.prs))        
@@ -181,9 +206,15 @@ simPopulationResponse<- function(
     if(any(c(length.out == 0, length(unique(ref.0$SEX)) == 1) == TRUE)) {
       if(SaveOnExtinction == TRUE){
         if(return.haplos == TRUE){
+<<<<<<< HEAD
           return(list(results = results.list, haplos = haplo.list))
         } else {  
           return(list(results = results.list))
+=======
+          return(list(results = results.list, haplos = haplo.list, maps = map.list))
+        } else {  
+          return(list(results = results.list, maps = map.list))
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
         }
       }
       
@@ -333,9 +364,15 @@ simPopulationResponse<- function(
   #~~ Parse output
   
   if(return.haplos == TRUE){
+<<<<<<< HEAD
     list(results = results.list, haplos = haplo.list)
   } else {  
     list(results = results.list)
+=======
+    list(results = results.list, haplos = haplo.list, maps = map.list)
+  } else {  
+    list(results = results.list, maps = map.list)
+>>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
   }
 }
 
