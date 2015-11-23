@@ -43,10 +43,6 @@
 # allele.freqs <- allele.freqs + (runif(n.loci) < 0.5)/2
 
 createFounderObject<- function(
-<<<<<<< HEAD
-=======
-  map.list,
->>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
   allele.freqs,
   n.found.hap = 100,
   n.loci,
@@ -82,10 +78,6 @@ createFounderObject<- function(
   return(list(ref.0 = ref.0,
               founder.haplos = founder.haplos,
               gen.0 = gen.0,
-<<<<<<< HEAD
-=======
-              map.list = map.list,
->>>>>>> 4fac048d81c527a17cf57447f45d43aa86aed609
               n.f = n.f,
               n.m = n.m,
               n.loci = n.loci))

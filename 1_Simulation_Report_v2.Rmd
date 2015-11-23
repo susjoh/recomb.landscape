@@ -618,6 +618,3 @@ ggplot(df2, aes(GEN, ModifierFreq, colour = Rate)) +
 ```
 
 
-### Future studies and considerations.
-
-
