@@ -1,0 +1,570 @@
+---
+output: html_document
+---
+## Simulation of responses to selection with changes in recombination rate and landscape.
+#### Susan E. Johnston, `r Sys.time()`
+
+### Introduction.
+
+Meiotic recombination is a fundamental feature of sexual reproduction and is an important source of genetic diversity. It can uncouple beneficial alleles from linked deleterious ones, creating new combinations of alleles that can allow populations to respond faster to selection. On the other hand, recombination can increase mutations at crossover sites, and can break up favourable combinations of alleles previously built up by selection. Recombination rate is likely to have a fairly simple genetic architecture, with a handful of loci with relatively large effects on rate variation, such as the *RNF212*/*CPLX1* region in humans, cattle and sheep.
+
+The majority of cross-overs occur in regions known as “hotspots” – short stretches of DNA 1-2kb long. In some mammal species (e.g. humans, mice) the location of hotspots can change rapidly, often attributed to variation in the gene *PRDM9*; in others (e.g. dogs), *PRDM9* has lost its function leading to stable recombination hotspots over longer periods of time. However, there remains little understanding of how recombination landscapes vary in non-model species, and if rapid hotspot turnover could be favoured if selection is strong (e.g. in domesticated species).
+
+The following is a simulation study that investigates how responses to selection change when recombination landscape remains stable, incomparison to when it changes due to the action of a single polymorphic modifier locus, such as *PRDM9*.
+
+### Model
+
+```{r echo = F, message=FALSE, warning=F, results=F}
+
+library(ggplot2)
+library(plyr)
+library(data.table)
+
+sapply(paste0("R/", dir("R", pattern = ".R")), source)
+
+SaveAndRunPrevModels <- TRUE
+```
+
+The study simulates selection on a polygenic trait in a mammal population with variation in recombination landscape. The simulations described in this report are modelled on selection regimes in domestic cattle, where males with highest trait values are selected to sire offspring in subsequent generations. 
+
+##### Founder population
+The founder population can be specified in the following example.
+
+```{r}
+
+n.females         <- 50  # Number of females in the founder generation
+n.males           <- 50  # Number of males in the founder generation
+n.offspring       <- 2   # Number of offspring per female
+male.sel.thresh   <- 0.4 # Top proportion of males that will be selected
+female.sel.thresh <- 1   # Top proportion of females that will be selected
+
+```
+
+Here, we will have a founder population of `r n.females` females and `r n.males` males. Each female will have `r n.offspring` offspring. Males that have trait values in the top `r male.sel.thresh*100`% of all males are selected for mating. At present, all females are mated. In running the model, we will force each female to have one offspring of each sex by specifying `force.equal.sex <- TRUE`. If this is specified as `FALSE` then the sex of the offspring is sampled at random. We will also `force.equal.male.success <- TRUE` which will sample males at random, but without replacement, with as equal a contribution of males as possible. If specified as `FALSE` then sires will be sampled randomly from all males above the selection threshold.
+
+##### Specification of recombination landscape and modifier loci.
+
+I will start with a simple model of recombination on a chromosome that is 1 Morgan long (i.e. an average of one crossover per meiosis). The number of loci contributing to the trait are specified. Each locus has two alleles: `0` resulting in no change in phenotype, and `1` that results in an increase in phenotype by one unit (NB. Specifying the units in this way is built into the function `simPopulationResponse`)
+
+```{r}
+n.loci <- 100   # The number of loci contributing to the trait
+```
+
+The function then requires information on the recombination fraction between loci, as well as the allele frequencies of the `1` alleles at each locus. Lets make a map for a 1 Morgan chromosome (total length 100cM) with equal recombination probabilities between loci. If we have `r n.loci` loci then we have a mean recombination fraction between loci of `r 1/n.loci`. Let's also specify equal allele frequencies at each locus.
+
+```{r}
+map.1  <- rep(1/n.loci, n.loci)
+freq.1 <- rep(0.5, n.loci)
+```
+
+We can simulation the population for a specified number of generations, and the number of founder haplotypes from which generation 1 are selected. At present, the starting haplotype pool are sampled at random based on allele frequences. We can also specify the number of haplotypes segregating in the founder population:
+
+```{r}
+generations <- 100
+n.found.hap <- 100
+```
+
+The function `simPopulationResponse` will use this information to simulate a population using the above parameters as so. NB. map.list must take a list, so input `list(map.1)` - this will become clearer later.
+
+NB. What does this function do?
+
+
+```{r}
+sim.1 <- simPopulationResponse(n.found.hap = n.found.hap,
+                               n.loci = n.loci,
+                               n.f = n.females, n.m = n.males,
+                               map.list = list(map.1),
+                               allele.freqs = freq.1,
+                               f.RS = n.offspring,
+                               sel.thresh.f = female.sel.thresh,
+                               sel.thresh.m = male.sel.thresh,
+                               modifier.found.freq = 0,
+                               n.generations = generations,
+                               force.equal.male.success = T,
+                               force.equal.sex = T,
+                               progressBar = F)
+
+```
+
+The `sim.1` object contains the slot `results`, which is a list of data frames containing information on each simulated individual in each generation. Headers indicate the generation, ID, mother and father IDs from the previous generation, sex (1 = male, 2 = female), the phenotypic value, the genotype of the individual for a modifier locus (this will be specified later) and whether or not that individual reproduced:
+
+```{r}
+# example from generation three
+
+head(sim.1$results[[3]])
+
+```
+
+The list can be condensed into a `data.table`. Let's examine what happens over the course of the simulation:
+
+
+```{r}
+
+sim.1.res <- rbindlist(sim.1$results)
+
+sim.1.res
+
+df1 <- ddply(sim.1.res, .(GEN), summarise, MeanPHENO = mean(PHENO))
+ggplot(df1, aes(GEN, MeanPHENO)) + geom_line()
+
+```
+
+The optimal phenotype that an individual can have in this case is `r n.loci * 2`. In this simulation, the maximum phenotype obtained is `r max(df1$MeanPHENO)` and is reached in generation `r min(which(df1$MeanPHENO == max(df1$MeanPHENO)))`. Recombination can occur between all loci in this case and so it is possible to couple beneficial combinations of alleles.
+
+_NB. One hypothesis to explain why recombination can be deleterious is that it can break up beneficial combinations of alleles that have already been built up by selection over time - but when selection is strong and directional, this not the case (although all variance in phenotype has disappeared)._
+
+##### Variation in recombination rate.
+
+What happens to the response to selection if recombination rates are increased? Let's try a chromosome of 2 Morgans in length, but with the same number of loci.
+
+```{r}
+
+map.2  <- rep(2/n.loci, n.loci)
+freq.2 <- rep(0.5, n.loci)
+
+sim.2 <- simPopulationResponse(n.found.hap = n.found.hap,
+                               n.loci = n.loci,
+                               n.f = n.females, n.m = n.males,
+                               map.list = list(map.2),
+                               allele.freqs = freq.2,
+                               f.RS = n.offspring,
+                               sel.thresh.f = female.sel.thresh,
+                               sel.thresh.m = male.sel.thresh,
+                               n.generations = generations,
+                               force.equal.male.success = T,
+                               force.equal.sex = T,
+                               progressBar = F)
+
+
+sim.2.res <- rbindlist(sim.2$results)
+
+sim.2.res
+
+df2 <- ddply(sim.2.res, .(GEN), summarise, MeanPHENO = mean(PHENO))
+
+ggplot(df2, aes(GEN, MeanPHENO)) + geom_line()
+
+```
+
+In this case, the response to selection is faster, reaching a maximum value of `r max(df2$MeanPHENO)` at generation `r min(which(df2$MeanPHENO == max(df2$MeanPHENO)))`
+
+
+I can run the simulations multiple times and examine the mean outcome. The function `createFounderObject` can create a founder population that can be input repeatedly - e.g. if comparing recombination scenarios, then they can start from the same haplotypes.
+
+```{r}
+
+#~~ Create list objects in which to save the results
+
+sim.1.res.list <- list()
+sim.2.res.list <- list()
+
+#~~ Specify number of iterations
+
+generations <- 100
+n.iterations <- 10
+
+#~~ Run simulations
+```
+```{r echo = F}
+model.name <- paste0("results/it", n.iterations,
+                     "_fo", n.found.hap,
+                     "_lo", n.loci,
+                     "_f", n.females,
+                     "_m", n.males,
+                     "_selm", male.sel.thresh,
+                     "_gen", generations,
+                     "_mod_sim1.2.Rdata")
+
+```
+
+```{r}
+if(SaveAndRunPrevModels == TRUE & file.exists(model.name)) {
+  load(model.name)
+  } else {
+    
+    for(i in 1:n.iterations){
+      
+      print(paste("Running iteration", i, "of", n.iterations))
+      
+      #~~ Create founder population
+      founder.pop <- createFounderObject(allele.freqs = freq.1,
+                                         n.found.hap = n.found.hap,
+                                         n.loci = n.loci,
+                                         n.f = n.females,
+                                         n.m = n.males,
+                                         f.RS = n.offspring)
+      
+      #~~ Simulate low recombination landscape
+      
+      sim.1.res.list[[i]] <- rbindlist(
+        simPopulationResponse(n.found.hap = n.found.hap,
+                              n.loci = n.loci, n.f = n.females,
+                              n.m = n.males, map.list = list(map.1),
+                              allele.freqs = freq.1,
+                              f.RS = n.offspring,
+                              sel.thresh.f = female.sel.thresh,
+                              sel.thresh.m = male.sel.thresh,
+                              n.generations = generations,
+                              force.equal.male.success = T,
+                              force.equal.sex = T,
+                              progressBar = F,
+                              FounderObject = founder.pop)$results)
+      
+      sim.1.res.list[[i]]$Simulation <- i
+      sim.1.res.list[[i]]$Rate <- "low"
+      
+      
+      
+      #~~ Simulate high recombination landscape
+      
+      sim.2.res.list[[i]] <- rbindlist(
+        simPopulationResponse(n.found.hap = n.found.hap,
+                              n.loci = n.loci, n.f = n.females,
+                              n.m = n.males, map.list = list(map.2),
+                              allele.freqs = freq.2,
+                              f.RS = n.offspring,
+                              sel.thresh.f = female.sel.thresh,
+                              sel.thresh.m = male.sel.thresh,
+                              n.generations = generations,
+                              force.equal.male.success = T,
+                              force.equal.sex = T,
+                              progressBar = F,
+                              FounderObject = founder.pop)$results)
+      
+      sim.2.res.list[[i]]$Simulation <- i
+      sim.2.res.list[[i]]$Rate <- "high"
+      
+      rm(founder.pop)
+      }
+    
+    save(sim.1.res.list, sim.2.res.list, file = model.name)
+    
+    }
+
+#~~ Parse output
+
+sim.1.2 <- rbind(rbindlist(sim.1.res.list),
+                 rbindlist(sim.2.res.list))
+
+sim.1.2$Simulation <- as.factor(sim.1.2$Simulation)
+sim.1.2$Rate       <- as.factor(sim.1.2$Rate)
+
+setkey(sim.1.2, GEN, Rate, Simulation)
+
+
+df1 <- ddply(sim.1.2, .(GEN, Rate, Simulation),
+             summarise,
+             MeanPHENO = mean(PHENO))
+
+df2 <- ddply(sim.1.2, .(GEN, Rate),
+             summarise,
+             MeanPHENO = mean(PHENO))
+
+ggplot(df1, aes(GEN, MeanPHENO,
+                group = interaction(Simulation, Rate),
+                colour = Rate)) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+ggplot(df2, aes(GEN, MeanPHENO, colour = Rate)) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+
+```
+
+From above, it appears that higher recombination rates allows the population to respond to selection faster.
+
+##### Polymorphism for a modifier locus that increases recombination rate.
+
+Above, the two simulations were carried out in populations with fixed rates. With the `simPopulationResponse` function it is possible to specify the allele frequency of a modifier locus that affects recombination rates within the population. Two parameters are specified: the frequency of the modifier allele, B,  in the population, and the recombination landscapes for homozygotes (AA), heterozygotes (AB) and homozygotes (BB), provided as a list of three vectors, in that order. For example, I will simulate a modifier that has an additive effect on recombination rate, doubling the rate between the two homozygotes, at a frequency of 0.5:
+
+
+```{r}
+
+increase.rate.freq <- 0.5
+
+map.3 <- list(rep(1  /n.loci, n.loci),
+              rep(1.5/n.loci, n.loci),
+              rep(2  /n.loci, n.loci))
+
+
+```
+
+I now can simulate a population with a rate modifier:
+
+```{r}
+#~~ Specify number of iterations
+
+generations <- 100
+n.iterations <- 10
+
+
+```
+
+```{r echo = F}
+
+model.name3 <- paste0("results/it", n.iterations,
+                      "_fo", n.found.hap,
+                      "_lo", n.loci,
+                      "_f", n.females,
+                      "_m", n.males,
+                      "_selm", male.sel.thresh,
+                      "_gen", generations,
+                      "_mod_sim3.Rdata")
+
+```
+
+```{r}
+
+#~~ Create list objects in which to save the results
+
+sim.3.res.list <- list()
+
+
+if(SaveAndRunPrevModels == T & file.exists(model.name3)){
+  load(model.name3)
+  } else {
+    
+    
+    #~~ Run simulations
+    
+    for(i in 1:n.iterations){
+      
+      print(paste("Running iteration", i, "of", n.iterations))
+      
+      #~~ Simulate recombination landscape
+      
+      sim.3.res.list[[i]] <- rbindlist(
+        simPopulationResponse(n.found.hap = n.found.hap,
+                              n.loci = n.loci, n.f = n.females,
+                              n.m = n.males, map.list = map.3,
+                              allele.freqs = freq.1,
+                              f.RS = n.offspring,
+                              sel.thresh.f = female.sel.thresh,
+                              sel.thresh.m = male.sel.thresh,
+                              n.generations = generations,
+                              modifier.found.freq = 0.5,
+                              force.equal.male.success = T,
+                              force.equal.sex = T,
+                              progressBar = F)$results)
+      
+      sim.3.res.list[[i]]$Simulation <- i
+      }
+    save(sim.3.res.list, file = model.name3)
+    }
+#~~ Parse output
+
+sim.3 <- rbindlist(sim.3.res.list)
+
+sim.3$Simulation <- as.factor(sim.3$Simulation)
+
+setkey(sim.3, GEN, Simulation)
+
+mod.freq <- function(vec) {sum(vec - 1)/(2*length(vec))}
+
+
+df1 <- ddply(sim.3, .(GEN, Simulation),
+             summarise,
+             MeanPHENO = mean(PHENO),
+             ModifierFreq = mod.freq(modifier))
+
+df2 <- ddply(sim.3, .(GEN),
+             summarise,
+             MeanPHENO = mean(PHENO),
+             ModifierFreq = mod.freq(modifier))
+
+
+ggplot(df1, aes(GEN, MeanPHENO, group = Simulation)) +
+  geom_line(colour = "red")
+
+ggplot(df1, aes(GEN, ModifierFreq, group = Simulation)) +
+  geom_line(colour = "red")
+
+ggplot(df2, aes(GEN, MeanPHENO)) +
+  geom_line(colour = "red")
+
+
+ggplot(df2, aes(GEN, ModifierFreq)) +
+  geom_line(colour = "red")
+
+
+```
+
+##### Mofidier that chanhes location of recombination
+
+```{r}
+
+increase.rate.freq <- 0.5
+
+map.4 <- list(rep(c(0, 2/n.loci), length.out = n.loci),
+              rep(1/n.loci, n.loci),
+              rep(c(2/n.loci, 0), length.out = n.loci))
+
+
+```
+
+I now can simulate a population with a rate modifier:
+
+```{r}
+#~~ Specify number of iterations
+
+generations <- 200
+n.iterations <- 20
+
+
+```
+
+```{r echo = F}
+
+model.name4 <- paste0("results/it", n.iterations,
+                      "_fo", n.found.hap,
+                      "_lo", n.loci,
+                      "_f", n.females,
+                      "_m", n.males,
+                      "_selm", male.sel.thresh,
+                      "_gen", generations,
+                      "_mod_sim4.Rdata")
+
+```
+
+```{r}
+
+#~~ Create list objects in which to save the results
+
+sim.4.res.list <- list()
+sim.4a.res.list <- list()
+
+
+if(SaveAndRunPrevModels == T & file.exists(model.name4)){
+  load(model.name4)
+  } else {
+    
+    
+    #~~ Run simulations
+    
+    for(i in 1:n.iterations){
+      
+      print(paste("Running iteration", i, "of", n.iterations))
+      
+      #~~ Simulate recombination landscape
+      
+      founder.pop <- createFounderObject(allele.freqs = freq.1,
+                                         n.found.hap = n.found.hap,
+                                         n.loci = n.loci,
+                                         n.f = n.females,
+                                         n.m = n.males,
+                                         f.RS = n.offspring)
+      
+      
+      
+      sim.4.res.list[[i]] <- rbindlist(
+        simPopulationResponse(n.found.hap = n.found.hap,
+                              n.loci = n.loci, n.f = n.females,
+                              n.m = n.males, map.list = map.4,
+                              allele.freqs = freq.1,
+                              f.RS = n.offspring,
+                              sel.thresh.f = female.sel.thresh,
+                              sel.thresh.m = male.sel.thresh,
+                              n.generations = generations,
+                              modifier.found.freq = 0,
+                              force.equal.male.success = T,
+                              force.equal.sex = T,
+                              FounderObject = founder.pop,
+                              progressBar = F)$results)
+      
+      sim.4.res.list[[i]]$Simulation <- i
+      sim.4.res.list[[i]]$Rate <- "fixed"
+      
+      sim.4a.res.list[[i]] <- rbindlist(
+        simPopulationResponse(n.found.hap = n.found.hap,
+                              n.loci = n.loci, n.f = n.females,
+                              n.m = n.males, map.list = map.4,
+                              allele.freqs = freq.1,
+                              f.RS = n.offspring,
+                              sel.thresh.f = female.sel.thresh,
+                              sel.thresh.m = male.sel.thresh,
+                              n.generations = generations,
+                              modifier.found.freq = 0.5,
+                              force.equal.male.success = T,
+                              force.equal.sex = T,
+                              FounderObject = founder.pop,
+                              progressBar = F)$results)
+      
+      sim.4a.res.list[[i]]$Simulation <- i
+      sim.4a.res.list[[i]]$Rate <- "variable"
+      
+      
+      
+      }
+    save(sim.4.res.list, sim.4a.res.list, file = model.name4)
+    }
+#~~ Parse output
+
+sim.4 <- rbind(rbindlist(sim.4.res.list),
+                 rbindlist(sim.4a.res.list))
+
+sim.4$Simulation <- as.factor(sim.4$Simulation)
+sim.4$Rate       <- as.factor(sim.4$Rate)
+
+setkey(sim.4, GEN, Rate, Simulation)
+
+
+df1 <- ddply(sim.4, .(GEN, Rate, Simulation),
+             summarise,
+             MeanPHENO = mean(PHENO),
+             ModifierFreq = mod.freq(modifier))
+
+df2 <- ddply(sim.4, .(GEN, Rate),
+             summarise,
+             MeanPHENO = mean(PHENO),
+             ModifierFreq = mod.freq(modifier))
+
+ggplot(df1, aes(GEN, MeanPHENO,
+                group = interaction(Simulation, Rate),
+                colour = Rate)) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+ggplot(df2, aes(GEN, MeanPHENO, colour = Rate)) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+ggplot(df1, aes(GEN, ModifierFreq, colour = Rate,
+                group = interaction(Simulation, Rate))) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+ggplot(df2, aes(GEN, ModifierFreq, colour = Rate)) +
+  geom_line() +
+  scale_colour_brewer(palette = "Set1")
+
+
+
+```
+
+
+### Future studies and considerations.
+
+There are several assumptions made in the current model that may not hold in a true mammal population. For example:
+
+* At present I assume equal recombination rates in each sex.
+* Modifier loci for recombination rate e.g. *RNF212*/*CLPX1*  may have sex specific or sexually antagonistic effects.
+* Population sizes are allowed to vary naturally, which can result in extinctions or very large increases in population size. 
+* Crossover-interference
+
+##### Function explained in detail
+
+
+`n.found.hap` haplotypes are generated to form a pool for the founder population by sampling alleles at random along the chromosome, with the probability of their allele frequency. Alleles are either 0 or 1, the latter contributing +1 unit to phenotype (the former contributing nothing to phenotype). Genotypes 00, 01 and 11 contribute 0, 1 and 2 units to phenotype respectively.
+
+A founder population is generated of size `n.m` males and `n.f` females. Each individual in the founder population has two haplotypes sampled at random from the haplotype pool. Genotypes at the modifier loci are also assigned to founder individuals independently of haplotypes (i.e. unlinked) to the founder population. Genotypes are sampled based on probabilities from the allele frequency `modifier.found.freq` and assuming Hardy Weinberg Equilibrium.
+
+In the founder population, individuals that breed and contribute to the next generation are determined based on the selection thresholds for males `sel.thresh.m` and females `sel.thesh.m`. This is done by sorting the phenotypes in each sex and selecting the top proportion of individuals based on specified parameters. 
+
+Once breeding individuals are determined, then the breeding structure can be sampled. Each female has `f.RS` offspring, with sexes either assigned at random (`force.equal.sex = FALSE`) or assigned to ensure a defined number of male or female offspring in that generation (`force.equal.sex = T`). Males are sampled either at random from breeding individuals (`force.equal.male.success` = F) or are sampled as equally as possible (`force.equal.male.success = T`).
+
+When offspring have been determined, the gametes transmitted from the parents to the offspring have to be generated. For each haplotype that the parent has, crossover positions for recombination are sampled based on the recombination fractions between loci. Once these are determined, one haplotype is sampled from the two recombinant haplotypes and is assigned as a haplotype in the offspring. A unique meiosis is carried out for each offspring. Each offspring will receive an allele for the modifier locus from each parent.
+
+This creates the new breeding population, and the process is repeated for `n.generations`.
+
