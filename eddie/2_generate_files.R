@@ -1,12 +1,16 @@
+
+
+
 RunID <- "a"
 runOnEddie <- T
  
 
 #~~ Parameters to be tested
 
+
 test.frame <- expand.grid(list(
-  pop.size            = c(10, 20, 50, 75, 100, 150, 200, 500, 1000, 2000),
-  loci.number         = c(10, 20, 50, 75, 100, 150, 200, 500, 1000, 2000, 10000),
+  pop.size            = c(10, 20, 50, 100, 150, 200, 500, 1000),
+  loci.number         = c(10, 20, 50, 100, 150, 200, 500, 1000),
   sel.thresh          = seq(0, 1, 0.2),
   modifier.found.freq = seq(0, 1, 0.2),
   generations         = 200,
@@ -48,7 +52,7 @@ for(i in 1:nrow(test.frame)){
     writeLines(paste0("#!/bin/sh\n", 
                       "\n",
                       "#$ -cwd\n",
-                      "#$ -l h_rt=04:00:00\n",
+                      ifelse(test.frame$pop.size[i] >= 500, "#$ -l h_rt=10:00:00\n", "#$ -l h_rt=04:00:00\n"),
                       "#$ -V\n",
                       "#$ -l h_vmem=5200M\n",
                       "\n",
