@@ -24,9 +24,10 @@
 #'   where 1 is all females selected)
 #' @param sel.thresh.m Selection threshold in males (value between 0 and 1, 
 #'   where 1 is all males selected)
-#' @param modifier.found.maf The minor allele frequence at the modifier locus, 
+
+#' @param modifier.found.freq The allele frequency of a the modifier locus, 
 #'   which will modify recombination landscape. An allele frequency of 0 will 
-#'   use the first element of map.list only.
+#'   use the first element of map.list only, 1 will use the third element only.
 #' @param n.generations Number of generations to run the simulation
 #' @param return.haplos Should the haplotype information be returned? Default = 
 #'   FALSE as will return a large amount of data!
@@ -82,8 +83,10 @@ simPopulationResponse<- function(
   f.RS.Pr = NULL,
   sel.thresh.f,
   sel.thresh.m,
-  modifier.found.freq, 
-  n.generations, 
+  modifier.found.freq = 0, 
+  n.generations,
+  force.equal.male.success = T,
+  force.equal.sex = T,
   return.haplos = FALSE,
   progressBar = TRUE,
   SaveOnExtinction = FALSE,
@@ -136,7 +139,6 @@ simPopulationResponse<- function(
     ref.0 <- FounderObject$ref.0
     founder.haplos <- founder.haplos <- FounderObject$founder.haplos
     gen.0 <- FounderObject$gen.0
-    map.list<- FounderObject$map.list
     
     
     #~~ determine modifier genotype frequencies based on HWE
@@ -180,9 +182,9 @@ simPopulationResponse<- function(
     if(any(c(length.out == 0, length(unique(ref.0$SEX)) == 1) == TRUE)) {
       if(SaveOnExtinction == TRUE){
         if(return.haplos == TRUE){
-          return(list(results = results.list, haplos = haplo.list, maps = map.list))
+          return(list(results = results.list, haplos = haplo.list))
         } else {  
-          return(list(results = results.list, maps = map.list))
+          return(list(results = results.list))
         }
       }
       
@@ -332,9 +334,9 @@ simPopulationResponse<- function(
   #~~ Parse output
   
   if(return.haplos == TRUE){
-    list(results = results.list, haplos = haplo.list, maps = map.list)
+    list(results = results.list, haplos = haplo.list)
   } else {  
-    list(results = results.list, maps = map.list)
+    list(results = results.list)
   }
 }
 
