@@ -11,7 +11,7 @@ test.frame <- expand.grid(list(
   modifier.found.freq = seq(0, 1, 0.2),
   generations         = 200,
   n.found.hap         = 100,
-  iterations          = 10,
+  iterations          = 100,
   modifier            = c("RNF212", "PRDM9")))
 
 test.frame <- unique(test.frame)
@@ -23,9 +23,6 @@ test.frame$Model.Name <- paste0(RunID,
                                 "_g", test.frame$generations,
                                 "_i", test.frame$iterations,
                                 "_" , test.frame$modifier)
-
-test.frame <- test.frame[1:2,]
-
 
 for(i in 1:nrow(test.frame)){
   
