@@ -5,8 +5,8 @@ runOnEddie <- T
 #~~ Parameters to be tested
 
 test.frame <- expand.grid(list(
-  pop.size            = c(10, 20, 50, 75, 100, 150, 200, 500, 1000, 2000),
-  loci.number         = c(10, 20, 50, 75, 100, 150, 200, 500, 1000, 2000, 10000),
+  pop.size            = c(10, 20, 50, 100, 150, 200, 500, 1000),
+  loci.number         = c(10, 20, 50, 100, 150, 200, 500, 1000),
   sel.thresh          = seq(0, 1, 0.2),
   modifier.found.freq = seq(0, 1, 0.2),
   generations         = 200,
