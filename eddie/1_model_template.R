@@ -39,6 +39,8 @@ for(it in 1:iterations){
   
   #~~ generate allele frequencies
   
+  map.1.list[[it]] <- map.list
+  
   freq.vec <- runif(n.loci, 0, 1)
   
   
@@ -58,4 +60,4 @@ for(it in 1:iterations){
   sim.1.list[[it]] <- sim.1
 }
 
-save(sim.1, file = paste0(model.name, ".Rdata"))
+save(sim.1.list, map.1.list, file = paste0(model.name, ".Rdata"))
